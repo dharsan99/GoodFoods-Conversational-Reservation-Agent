@@ -19,6 +19,10 @@ class GoodFoodsAgent:
         # Use the trained model - we need to get the endpoint ID for the deployed model
         self.model_name = "7439580447044009984"  # Your trained Llama 3.1 8B model
         # We'll need to find the endpoint ID where this model is deployed
+        # For now, let's try to find it automatically, but you can also set it manually
+        self.endpoint_id = None  # Will be set when we find the endpoint
+        # If you know your endpoint ID, you can uncomment and set it here:
+        # self.endpoint_id = "2841211713452244992"  # Example endpoint ID
         
         # Initialize conversation state
         self.conversation_history = []
@@ -107,41 +111,53 @@ Available tools:
             
             # Try to get the model and find its endpoint
             try:
-                # First, let's try to list available endpoints to see what's available
-                try:
-                    from google.cloud import aiplatform
-                    endpoints = aiplatform.Endpoint.list(
-                        project=self.project_id,
-                        location=self.location
+                # If endpoint ID is manually set, use it
+                if self.endpoint_id:
+                    print(f"Using manually set endpoint ID: {self.endpoint_id}")
+                    endpoint = client.endpoint_path(
+                        project=self.project_id, 
+                        location=self.location, 
+                        endpoint=self.endpoint_id
                     )
-                    print(f"Available endpoints: {[ep.display_name for ep in endpoints]}")
-                    
-                    # Look for an endpoint that might contain our model ID
-                    target_endpoint = None
-                    for ep in endpoints:
-                        if self.model_name in ep.display_name or self.model_name in str(ep.resource_name):
-                            target_endpoint = ep
-                            break
-                    
-                    if target_endpoint:
-                        print(f"Found matching endpoint: {target_endpoint.display_name}")
-                        endpoint = target_endpoint.resource_name
-                    else:
-                        print("No matching endpoint found, trying model ID as endpoint")
+                                else:
+                    # First, let's try to list available endpoints to see what's available
+                    try:
+                        from google.cloud import aiplatform
+                        endpoints = aiplatform.Endpoint.list(
+                            project=self.project_id,
+                            location=self.location
+                        )
+                        print(f"Available endpoints: {[ep.display_name for ep in endpoints]}")
+                        
+                        # Look for an endpoint that might contain our model ID
+                        target_endpoint = None
+                        for ep in endpoints:
+                            print(f"Checking endpoint: {ep.display_name} (ID: {ep.name.split('/')[-1]})")
+                            if self.model_name in ep.display_name or self.model_name in str(ep.resource_name):
+                                target_endpoint = ep
+                                break
+                        
+                        if target_endpoint:
+                            print(f"Found matching endpoint: {target_endpoint.display_name}")
+                            self.endpoint_id = target_endpoint.name.split('/')[-1]  # Extract endpoint ID
+                            endpoint = target_endpoint.resource_name
+                        else:
+                            print("No matching endpoint found, trying model ID as endpoint")
+                            self.endpoint_id = self.model_name  # Use model ID as endpoint ID
+                            endpoint = client.endpoint_path(
+                                project=self.project_id, 
+                                location=self.location, 
+                                endpoint=self.model_name
+                            )
+                    except Exception as list_error:
+                        print(f"Could not list endpoints: {list_error}")
+                        # Fallback to using model ID as endpoint
+                        self.endpoint_id = self.model_name  # Use model ID as endpoint ID
                         endpoint = client.endpoint_path(
                             project=self.project_id, 
                             location=self.location, 
                             endpoint=self.model_name
                         )
-                        
-                except Exception as list_error:
-                    print(f"Could not list endpoints: {list_error}")
-                    # Fallback to using model ID as endpoint
-                    endpoint = client.endpoint_path(
-                        project=self.project_id, 
-                        location=self.location, 
-                        endpoint=self.model_name
-                    )
                 
                 print(f"Trying endpoint: {endpoint}")
                 
