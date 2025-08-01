@@ -1,4 +1,5 @@
 import os
+import asyncio
 from typing import Dict, List, Optional
 from prisma import Prisma
 from datetime import datetime
@@ -7,12 +8,20 @@ import json
 class DatabaseManager:
     def __init__(self):
         self.db = Prisma()
-        self._connect()
+    
+    def __enter__(self):
+        """Context manager entry"""
+        asyncio.run(self.db.connect())
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit"""
+        asyncio.run(self.db.disconnect())
     
     def _connect(self):
         """Connect to the database"""
         try:
-            self.db.connect()
+            asyncio.run(self.db.connect())
         except Exception as e:
             print(f"Database connection failed: {e}")
             raise
@@ -20,21 +29,27 @@ class DatabaseManager:
     def disconnect(self):
         """Disconnect from the database"""
         if self.db:
-            self.db.disconnect()
+            try:
+                asyncio.run(self.db.disconnect())
+            except Exception as e:
+                print(f"Error disconnecting: {e}")
     
     def add_restaurant(self, name: str, address: str, latitude: float, longitude: float, 
                       cuisine_type: str, opening_hours: Dict) -> int:
         """Add a new restaurant to the database."""
         try:
-            restaurant = self.db.restaurant.create({
-                'name': name,
-                'address': address,
-                'latitude': latitude,
-                'longitude': longitude,
-                'cuisineType': cuisine_type,
-                'openingHours': opening_hours
-            })
-            return restaurant.id
+            async def _add_restaurant():
+                restaurant = await self.db.restaurant.create({
+                    'name': name,
+                    'address': address,
+                    'latitude': latitude,
+                    'longitude': longitude,
+                    'cuisineType': cuisine_type,
+                    'openingHours': opening_hours
+                })
+                return restaurant.id
+            
+            return asyncio.run(_add_restaurant())
         except Exception as e:
             print(f"Error adding restaurant: {e}")
             raise
@@ -42,11 +57,14 @@ class DatabaseManager:
     def add_tables_to_restaurant(self, restaurant_id: int, table_capacities: List[int]):
         """Add tables to a restaurant with specified capacities."""
         try:
-            for capacity in table_capacities:
-                self.db.table.create({
-                    'restaurantId': restaurant_id,
-                    'capacity': capacity
-                })
+            async def _add_tables():
+                for capacity in table_capacities:
+                    await self.db.table.create({
+                        'restaurantId': restaurant_id,
+                        'capacity': capacity
+                    })
+            
+            asyncio.run(_add_tables())
         except Exception as e:
             print(f"Error adding tables: {e}")
             raise
@@ -54,11 +72,14 @@ class DatabaseManager:
     def add_user(self, name: str, phone_number: str) -> int:
         """Add a new user to the database."""
         try:
-            user = self.db.user.create({
-                'name': name,
-                'phoneNumber': phone_number
-            })
-            return user.id
+            async def _add_user():
+                user = await self.db.user.create({
+                    'name': name,
+                    'phoneNumber': phone_number
+                })
+                return user.id
+            
+            return asyncio.run(_add_user())
         except Exception as e:
             print(f"Error adding user: {e}")
             raise
@@ -73,14 +94,17 @@ class DatabaseManager:
             else:
                 booking_datetime = booking_time
             
-            booking = self.db.booking.create({
-                'restaurantId': restaurant_id,
-                'userId': user_id,
-                'bookingTime': booking_datetime,
-                'numGuests': num_guests,
-                'specialRequests': special_requests
-            })
-            return booking.id
+            async def _create_booking():
+                booking = await self.db.booking.create({
+                    'restaurantId': restaurant_id,
+                    'userId': user_id,
+                    'bookingTime': booking_datetime,
+                    'numGuests': num_guests,
+                    'specialRequests': special_requests
+                })
+                return booking.id
+            
+            return asyncio.run(_create_booking())
         except Exception as e:
             print(f"Error creating booking: {e}")
             raise
@@ -88,37 +112,40 @@ class DatabaseManager:
     def get_restaurants(self, location: Optional[str] = None, cuisine: Optional[str] = None) -> List[Dict]:
         """Get restaurants filtered by location and/or cuisine."""
         try:
-            where_conditions = {}
+            async def _get_restaurants():
+                where_conditions = {}
+                
+                if location:
+                    where_conditions['OR'] = [
+                        {'address': {'contains': location}},
+                        {'name': {'contains': location}}
+                    ]
+                
+                if cuisine:
+                    where_conditions['cuisineType'] = {'contains': cuisine}
+                
+                restaurants = await self.db.restaurant.find_many(
+                    where=where_conditions if where_conditions else None,
+                    include={
+                        'tables': True
+                    }
+                )
+                
+                result = []
+                for restaurant in restaurants:
+                    result.append({
+                        'restaurant_id': restaurant.id,
+                        'name': restaurant.name,
+                        'address': restaurant.address,
+                        'latitude': restaurant.latitude,
+                        'longitude': restaurant.longitude,
+                        'cuisine_type': restaurant.cuisineType,
+                        'opening_hours': restaurant.openingHours
+                    })
+                
+                return result
             
-            if location:
-                where_conditions['OR'] = [
-                    {'address': {'contains': location}},
-                    {'name': {'contains': location}}
-                ]
-            
-            if cuisine:
-                where_conditions['cuisineType'] = {'contains': cuisine}
-            
-            restaurants = self.db.restaurant.find_many(
-                where=where_conditions if where_conditions else None,
-                include={
-                    'tables': True
-                }
-            )
-            
-            result = []
-            for restaurant in restaurants:
-                result.append({
-                    'restaurant_id': restaurant.id,
-                    'name': restaurant.name,
-                    'address': restaurant.address,
-                    'latitude': restaurant.latitude,
-                    'longitude': restaurant.longitude,
-                    'cuisine_type': restaurant.cuisineType,
-                    'opening_hours': restaurant.openingHours
-                })
-            
-            return result
+            return asyncio.run(_get_restaurants())
         except Exception as e:
             print(f"Error getting restaurants: {e}")
             return []
@@ -133,28 +160,31 @@ class DatabaseManager:
             # Create datetime for the requested booking time
             requested_datetime = datetime.combine(date_obj.date(), time_obj)
             
-            # Get existing bookings for this restaurant on this date
-            existing_bookings = self.db.booking.find_many(
-                where={
-                    'restaurantId': restaurant_id,
-                    'bookingTime': {
-                        'gte': date_obj,
-                        'lt': date_obj.replace(hour=23, minute=59, second=59)
-                    },
-                    'status': 'confirmed'
-                }
-            )
+            async def _check_availability():
+                # Get existing bookings for this restaurant on this date
+                existing_bookings = await self.db.booking.find_many(
+                    where={
+                        'restaurantId': restaurant_id,
+                        'bookingTime': {
+                            'gte': date_obj,
+                            'lt': date_obj.replace(hour=23, minute=59, second=59)
+                        },
+                        'status': 'confirmed'
+                    }
+                )
+                
+                # Mock available time slots (in a real system, this would be calculated based on table capacities)
+                available_slots = [
+                    "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
+                    "19:00", "19:30", "20:00", "20:30", "21:00", "21:30"
+                ]
+                
+                # Filter out the requested time
+                filtered_slots = [slot for slot in available_slots if slot != time]
+                
+                return filtered_slots[:5]  # Return top 5 available slots
             
-            # Mock available time slots (in a real system, this would be calculated based on table capacities)
-            available_slots = [
-                "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
-                "19:00", "19:30", "20:00", "20:30", "21:00", "21:30"
-            ]
-            
-            # Filter out the requested time
-            filtered_slots = [slot for slot in available_slots if slot != time]
-            
-            return filtered_slots[:5]  # Return top 5 available slots
+            return asyncio.run(_check_availability())
             
         except Exception as e:
             print(f"Error checking availability: {e}")
@@ -163,28 +193,31 @@ class DatabaseManager:
     def get_booking(self, booking_id: int) -> Optional[Dict]:
         """Get booking details by booking ID."""
         try:
-            booking = self.db.booking.find_unique(
-                where={'id': booking_id},
-                include={
-                    'restaurant': True,
-                    'user': True
-                }
-            )
+            async def _get_booking():
+                booking = await self.db.booking.find_unique(
+                    where={'id': booking_id},
+                    include={
+                        'restaurant': True,
+                        'user': True
+                    }
+                )
+                
+                if booking:
+                    return {
+                        'booking_id': booking.id,
+                        'restaurant_id': booking.restaurantId,
+                        'user_id': booking.userId,
+                        'booking_time': booking.bookingTime.isoformat(),
+                        'num_guests': booking.numGuests,
+                        'status': booking.status,
+                        'special_requests': booking.specialRequests,
+                        'restaurant_name': booking.restaurant.name,
+                        'user_name': booking.user.name,
+                        'phone_number': booking.user.phoneNumber
+                    }
+                return None
             
-            if booking:
-                return {
-                    'booking_id': booking.id,
-                    'restaurant_id': booking.restaurantId,
-                    'user_id': booking.userId,
-                    'booking_time': booking.bookingTime.isoformat(),
-                    'num_guests': booking.numGuests,
-                    'status': booking.status,
-                    'special_requests': booking.specialRequests,
-                    'restaurant_name': booking.restaurant.name,
-                    'user_name': booking.user.name,
-                    'phone_number': booking.user.phoneNumber
-                }
-            return None
+            return asyncio.run(_get_booking())
         except Exception as e:
             print(f"Error getting booking: {e}")
             return None
@@ -192,11 +225,14 @@ class DatabaseManager:
     def cancel_booking(self, booking_id: int) -> bool:
         """Cancel a booking by setting its status to 'cancelled'."""
         try:
-            booking = self.db.booking.update(
-                where={'id': booking_id},
-                data={'status': 'cancelled'}
-            )
-            return True
+            async def _cancel_booking():
+                booking = await self.db.booking.update(
+                    where={'id': booking_id},
+                    data={'status': 'cancelled'}
+                )
+                return True
+            
+            return asyncio.run(_cancel_booking())
         except Exception as e:
             print(f"Error cancelling booking: {e}")
             return False
@@ -204,17 +240,20 @@ class DatabaseManager:
     def get_user_by_phone(self, phone_number: str) -> Optional[Dict]:
         """Get user by phone number."""
         try:
-            user = self.db.user.find_unique(
-                where={'phoneNumber': phone_number}
-            )
+            async def _get_user():
+                user = await self.db.user.find_unique(
+                    where={'phoneNumber': phone_number}
+                )
+                
+                if user:
+                    return {
+                        'user_id': user.id,
+                        'name': user.name,
+                        'phone_number': user.phoneNumber
+                    }
+                return None
             
-            if user:
-                return {
-                    'user_id': user.id,
-                    'name': user.name,
-                    'phone_number': user.phoneNumber
-                }
-            return None
+            return asyncio.run(_get_user())
         except Exception as e:
             print(f"Error getting user: {e}")
             return None
