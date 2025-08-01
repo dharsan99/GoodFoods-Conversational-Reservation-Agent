@@ -1,0 +1,17 @@
+# GoodFoods Conversational Agent Environment Variables
+# Copy this file to .env and fill in your actual values
+
+# Your Llama 3.1 8B API key
+# You can get this from providers like:
+# - DeepInfra: https://deepinfra.com/
+# - Ollama: https://ollama.ai/ (for local deployment)
+# - Other compatible providers
+API_KEY="your_api_key_here"
+
+# PostgreSQL Database URL (for production)
+# Format: postgresql://username:password@host:port/database
+# For Render: Use the Internal Connection URL from your PostgreSQL service
+DATABASE_URL="postgresql://username:password@host:port/database"
+
+# Optional: Custom API endpoint (defaults to DeepInfra)
+# API_URL="https://api.deepinfra.com/v1/chat/completions" 
