@@ -88,13 +88,15 @@ Available tools:
                 return {"error": "Google Cloud credentials not configured"}
             
             # Parse the JSON credentials
-            if credentials_json.startswith('{'):
-                # It's a JSON string
+            try:
+                # Try to parse as JSON first
                 creds_data = json.loads(credentials_json)
                 credentials = service_account.Credentials.from_service_account_info(creds_data)
-            else:
-                # It's a file path
+                print("Successfully loaded credentials from JSON string")
+            except json.JSONDecodeError:
+                # If it's not valid JSON, treat as file path
                 credentials = service_account.Credentials.from_service_account_file(credentials_json)
+                print("Successfully loaded credentials from file path")
             
             # Initialize client
             client_options = {"api_endpoint": f"{self.location}-aiplatform.googleapis.com"}
@@ -174,11 +176,31 @@ Available tools:
         try:
             import vertexai
             from vertexai.preview import language_models
+            import json
+            from google.oauth2 import service_account
             
-            # Initialize Vertex AI
+            # Get credentials from environment variable
+            credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+            if not credentials_json:
+                print("Warning: GOOGLE_APPLICATION_CREDENTIALS not set")
+                return {"error": "Google Cloud credentials not configured"}
+            
+            # Parse the JSON credentials
+            try:
+                # Try to parse as JSON first
+                creds_data = json.loads(credentials_json)
+                credentials = service_account.Credentials.from_service_account_info(creds_data)
+                print("Base model: Successfully loaded credentials from JSON string")
+            except json.JSONDecodeError:
+                # If it's not valid JSON, treat as file path
+                credentials = service_account.Credentials.from_service_account_file(credentials_json)
+                print("Base model: Successfully loaded credentials from file path")
+            
+            # Initialize Vertex AI with explicit credentials
             vertexai.init(
                 project=self.project_id,
-                location=self.location
+                location=self.location,
+                credentials=credentials
             )
             
             # Use base model
