@@ -16,8 +16,9 @@ class GoodFoodsAgent:
         """Initialize the GoodFoods AI Agent"""
         self.project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID", "speechtotext-466820")
         self.location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-        # Use the trained model instead of base model
+        # Use the trained model - we need to get the endpoint ID for the deployed model
         self.model_name = "7439580447044009984"  # Your trained Llama 3.1 8B model
+        # We'll need to find the endpoint ID where this model is deployed
         
         # Initialize conversation state
         self.conversation_history = []
@@ -72,11 +73,13 @@ Available tools:
     def invoke_llm(self, messages: List[Dict], tools: List[Dict]) -> Dict:
         """Invoke the Llama 3.1 8B model via Google Cloud Vertex AI"""
         try:
-            # Set up Google Cloud credentials explicitly
+            # For fine-tuned models, we need to use PredictionServiceClient
             import json
             import os
             from google.oauth2 import service_account
             from google.cloud import aiplatform
+            from google.protobuf import json_format
+            from google.protobuf.struct_pb2 import Value
             
             # Get credentials from environment variable
             credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
@@ -93,19 +96,93 @@ Available tools:
                 # It's a file path
                 credentials = service_account.Credentials.from_service_account_file(credentials_json)
             
-            # Initialize Vertex AI with explicit credentials
+            # Initialize client
+            client_options = {"api_endpoint": f"{self.location}-aiplatform.googleapis.com"}
+            client = aiplatform.gapic.PredictionServiceClient(client_options=client_options)
+            
+            # We need to find the endpoint where the model is deployed
+            print(f"Looking for endpoint for model: {self.model_name}")
+            
+            # Try to get the model and find its endpoint
+            try:
+                # First, let's try using the model directly as an endpoint ID
+                endpoint = client.endpoint_path(
+                    project=self.project_id, 
+                    location=self.location, 
+                    endpoint=self.model_name
+                )
+                
+                # Prepare the prompt
+                system_prompt = self.build_system_prompt()
+                conversation_messages = [{"role": "system", "content": system_prompt}] + messages[-5:]
+                
+                # Convert to Vertex AI format
+                vertex_messages = []
+                for msg in conversation_messages:
+                    if msg["role"] == "system":
+                        vertex_messages.append(f"System: {msg['content']}")
+                    elif msg["role"] == "user":
+                        vertex_messages.append(f"User: {msg['content']}")
+                    elif msg["role"] == "assistant":
+                        vertex_messages.append(f"Assistant: {msg['content']}")
+                
+                # Join messages
+                prompt = "\n".join(vertex_messages)
+                
+                # Create instance for prediction
+                instance = {"prompt": prompt}
+                instances = [json_format.ParseDict(instance, Value())]
+                
+                # Make prediction
+                response = client.predict(
+                    endpoint=endpoint, 
+                    instances=instances, 
+                    parameters=json_format.ParseDict({}, Value())
+                )
+                
+                # Extract prediction
+                if response.predictions:
+                    prediction = response.predictions[0]
+                    # Convert from protobuf Value to string
+                    if hasattr(prediction, 'string_value'):
+                        content = prediction.string_value
+                    else:
+                        content = str(prediction)
+                    
+                    return {
+                        "choices": [{
+                            "message": {
+                                "content": content,
+                                "role": "assistant"
+                            }
+                        }]
+                    }
+                else:
+                    raise Exception("No predictions returned")
+                    
+            except Exception as e:
+                print(f"Failed to use model as endpoint: {e}")
+                # Fallback to base model
+                return self._invoke_base_model(messages, tools)
+                
+        except Exception as e:
+            print(f"Error invoking LLM: {e}")
+            return self._invoke_base_model(messages, tools)
+    
+    def _invoke_base_model(self, messages: List[Dict], tools: List[Dict]) -> Dict:
+        """Fallback to base model using TextGenerationModel"""
+        try:
             import vertexai
             from vertexai.preview import language_models
             
+            # Initialize Vertex AI
             vertexai.init(
                 project=self.project_id,
-                location=self.location,
-                credentials=credentials
+                location=self.location
             )
             
-            # Get the model using the full model path
-            model_path = f"projects/{self.project_id}/locations/{self.location}/models/{self.model_name}"
-            model = language_models.TextGenerationModel.from_pretrained(model_path)
+            # Use base model
+            model = language_models.TextGenerationModel.from_pretrained("llama3-1-8b")
             
             # Prepare messages for Vertex AI format
             system_prompt = self.build_system_prompt()
@@ -125,6 +202,7 @@ Available tools:
             prompt = "\n".join(vertex_messages)
             
             # Generate response
+            print(f"Using base model as fallback")
             response = model.predict(
                 prompt,
                 temperature=0.1,
@@ -142,7 +220,7 @@ Available tools:
             }
             
         except Exception as e:
-            print(f"Error invoking LLM: {e}")
+            print(f"Error with base model fallback: {e}")
             return {"error": f"Failed to get response from AI model: {str(e)}"}
 
     def invoke_llm_dev_mode(self, messages: List[Dict], tools: List[Dict]) -> Dict:
