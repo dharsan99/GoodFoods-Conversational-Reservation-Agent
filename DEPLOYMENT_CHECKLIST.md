@@ -14,7 +14,7 @@
 - [ ] Create new Web Service in Render
 - [ ] Connect GitHub repository
 - [ ] Set configuration:
-  - [ ] Name: `goodfoods-backend`
+  - [ ] Name: `goodfoods-agent-api`
   - [ ] Environment: Docker
   - [ ] Dockerfile Path: `backend/Dockerfile`
   - [ ] Docker Context: `backend`
@@ -37,9 +37,9 @@
   - [ ] Docker Context: `frontend`
   - [ ] Plan: Starter
 - [ ] Set environment variables:
-  - [ ] `BACKEND_URL=https://goodfoods-backend.onrender.com`
+  - [ ] `BACKEND_URL=https://goodfoods-agent-api.onrender.com`
 - [ ] Deploy and wait for completion
-- [ ] Test frontend: `https://goodfoods-frontend.onrender.com`
+- [ ] Test frontend: `https://goodfoods-agent-ui.onrender.com`
 
 ## 🧪 Testing
 - [ ] Backend health check passes
@@ -58,9 +58,9 @@
 - [ ] Document deployment process
 
 ## 🔗 URLs
-- **Frontend**: `https://goodfoods-frontend.onrender.com`
-- **Backend**: `https://goodfoods-backend.onrender.com`
-- **Backend Health**: `https://goodfoods-backend.onrender.com/health`
+- **Frontend**: `https://goodfoods-agent-ui.onrender.com`
+- **Backend**: `https://goodfoods-agent-api.onrender.com`
+- **Backend Health**: `https://goodfoods-agent-api.onrender.com/health`
 
 ## 📞 Support
 If you encounter issues:

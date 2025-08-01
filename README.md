@@ -78,7 +78,7 @@ GOOGLE_CLOUD_LOCATION=us-central1
 GOOGLE_APPLICATION_CREDENTIALS=<your-service-account-json>
 
 # Frontend Service
-BACKEND_URL=https://your-backend-service.onrender.com
+BACKEND_URL=https://goodfoods-agent-api.onrender.com
 ```
 
 ### 🐳 Local Docker Deployment

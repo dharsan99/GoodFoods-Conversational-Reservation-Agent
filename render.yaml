@@ -1,7 +1,7 @@
 services:
   # Backend Service
   - type: web
-    name: goodfoods-backend
+    name: goodfoods-agent-api
     env: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
@@ -29,6 +29,6 @@ services:
     region: singapore
     envVars:
       - key: BACKEND_URL
-        value: https://goodfoods-backend.onrender.com
+        value: https://goodfoods-agent-api.onrender.com
     healthCheckPath: /_stcore/health
     autoDeploy: true 

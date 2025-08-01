@@ -58,7 +58,7 @@ GoodFoods-Conversational-Reservation-Agent/
    - Select the repository
 
 3. **Configure Backend Service**
-   - **Name**: `goodfoods-backend`
+   - **Name**: `goodfoods-agent-api`
    - **Environment**: `Docker`
    - **Dockerfile Path**: `backend/Dockerfile`
    - **Docker Context**: `backend`
@@ -93,7 +93,7 @@ GoodFoods-Conversational-Reservation-Agent/
 
 3. **Set Environment Variables**
    ```
-   BACKEND_URL=https://goodfoods-backend.onrender.com
+   BACKEND_URL=https://goodfoods-agent-api.onrender.com
    ```
 
 4. **Deploy**
@@ -192,7 +192,7 @@ Once deployed, Render will automatically:
 ## 🎉 Success!
 
 Your GoodFoods AI Agent is now live at:
-- **Frontend**: `https://goodfoods-frontend.onrender.com`
-- **Backend**: `https://goodfoods-backend.onrender.com`
+- **Frontend**: `https://goodfoods-agent-ui.onrender.com`
+- **Backend**: `https://goodfoods-agent-api.onrender.com`
 
 The AI agent is ready to help customers with restaurant reservations! 
