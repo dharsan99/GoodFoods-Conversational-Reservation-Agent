@@ -66,19 +66,17 @@ def initialize_session_state():
     if "messages" not in st.session_state:
         st.session_state.messages = []
     
-    # Backend URL - can be configured via environment variable
-    if "backend_url" not in st.session_state:
-        st.session_state.backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+    # Backend URL - always read from environment variable (not cached)
+    st.session_state.backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
     
-    # Check backend connectivity
-    if "backend_connected" not in st.session_state:
+    # Check backend connectivity (always check, not cached)
+    st.session_state.backend_connected = False
+    try:
+        response = requests.get(f"{st.session_state.backend_url}/health", timeout=5)
+        if response.status_code == 200:
+            st.session_state.backend_connected = True
+    except:
         st.session_state.backend_connected = False
-        try:
-            response = requests.get(f"{st.session_state.backend_url}/health", timeout=5)
-            if response.status_code == 200:
-                st.session_state.backend_connected = True
-        except:
-            st.session_state.backend_connected = False
 
 def display_header():
     """Display the main header and description."""
@@ -118,11 +116,12 @@ def display_sidebar():
         st.divider()
         
         st.header("Backend Status")
+        st.info(f"Backend URL: {st.session_state.backend_url}")
         if st.session_state.backend_connected:
             st.success("✅ Backend Connected")
         else:
             st.error("❌ Backend Disconnected")
-            st.info("Make sure the backend server is running on http://localhost:8000")
+            st.info(f"Make sure the backend server is running on {st.session_state.backend_url}")
         
         st.divider()
         
