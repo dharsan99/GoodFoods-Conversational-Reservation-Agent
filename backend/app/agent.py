@@ -114,6 +114,19 @@ Available tools:
                     endpoint=self.model_name
                 )
                 
+                print(f"Trying endpoint: {endpoint}")
+                
+                # Let's also try to list available endpoints to see what's available
+                try:
+                    from google.cloud import aiplatform
+                    endpoints = aiplatform.Endpoint.list(
+                        project=self.project_id,
+                        location=self.location
+                    )
+                    print(f"Available endpoints: {[ep.display_name for ep in endpoints]}")
+                except Exception as list_error:
+                    print(f"Could not list endpoints: {list_error}")
+                
                 # Prepare the prompt
                 system_prompt = self.build_system_prompt()
                 conversation_messages = [{"role": "system", "content": system_prompt}] + messages[-5:]
@@ -203,8 +216,20 @@ Available tools:
                 credentials=credentials
             )
             
-            # Use base model
-            model = language_models.TextGenerationModel.from_pretrained("llama3-1-8b")
+            # Use base model - try different model names
+            try:
+                model = language_models.TextGenerationModel.from_pretrained("llama3-1-8b")
+            except Exception as e:
+                print(f"Failed with llama3-1-8b, trying meta/llama-3.1-8b-instruct: {e}")
+                try:
+                    model = language_models.TextGenerationModel.from_pretrained("meta/llama-3.1-8b-instruct")
+                except Exception as e2:
+                    print(f"Failed with meta/llama-3.1-8b-instruct, trying llama-3.1-8b: {e2}")
+                    try:
+                        model = language_models.TextGenerationModel.from_pretrained("llama-3.1-8b")
+                    except Exception as e3:
+                        print(f"Failed with llama-3.1-8b, trying meta/llama-3.1-8b: {e3}")
+                        model = language_models.TextGenerationModel.from_pretrained("meta/llama-3.1-8b")
             
             # Prepare messages for Vertex AI format
             system_prompt = self.build_system_prompt()
