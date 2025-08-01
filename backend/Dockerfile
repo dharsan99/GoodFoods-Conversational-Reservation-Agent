@@ -46,8 +46,12 @@ echo "🚀 Starting GoodFoods Backend..."\n\
 # Authenticate with Google Cloud (if service account key is provided)\n\
 if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ]; then\n\
     echo "🔐 Authenticating with Google Cloud..."\n\
-    gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS\n\
+    # Create service account key file from environment variable\n\
+    echo "$GOOGLE_APPLICATION_CREDENTIALS" > /tmp/service-account-key.json\n\
+    gcloud auth activate-service-account --key-file=/tmp/service-account-key.json\n\
     gcloud config set project $GOOGLE_CLOUD_PROJECT_ID\n\
+    # Clean up the temporary key file\n\
+    rm /tmp/service-account-key.json\n\
 fi\n\
 \n\
 # Initialize Prisma\n\
