@@ -46,13 +46,27 @@ class GoodFoodsAgent:
             if credentials_json.startswith('{'):
                 # It's a JSON string
                 creds_data = json.loads(credentials_json)
-                # Create credentials object
+                # Create credentials object with proper scopes
                 from google.oauth2 import service_account
-                credentials = service_account.Credentials.from_service_account_info(creds_data)
+                scopes = [
+                    'https://www.googleapis.com/auth/cloud-platform',
+                    'https://www.googleapis.com/auth/aiplatform.endpoints'
+                ]
+                credentials = service_account.Credentials.from_service_account_info(
+                    creds_data, 
+                    scopes=scopes
+                )
             else:
                 # It's a file path
                 from google.oauth2 import service_account
-                credentials = service_account.Credentials.from_service_account_file(credentials_json)
+                scopes = [
+                    'https://www.googleapis.com/auth/cloud-platform',
+                    'https://www.googleapis.com/auth/aiplatform.endpoints'
+                ]
+                credentials = service_account.Credentials.from_service_account_file(
+                    credentials_json,
+                    scopes=scopes
+                )
             
             # Get access token
             credentials.refresh(Request())
@@ -100,32 +114,52 @@ Available tools:
     def invoke_llm(self, messages: List[Dict], tools: List[Dict]) -> Dict:
         """Invoke the Llama 3.1 8B model via Google Cloud Vertex AI"""
         try:
-            # Google Cloud Vertex AI endpoint (correct format)
-            endpoint = f"{self.location}-aiplatform.googleapis.com"
-            url = f"https://{endpoint}/v1/projects/{self.project_id}/locations/{self.location}/endpoints/openapi/chat/completions"
+            # Use Vertex AI client library for proper authentication
+            import vertexai
+            from vertexai.preview import language_models
             
-            # Prepare the request payload (OpenAI-compatible format)
-            payload = {
-                "model": self.model_name,  # Use the trained model ID
-                "messages": [
-                    {"role": "system", "content": self.build_system_prompt()}
-                ] + messages[-5:],  # Last 5 messages for context
-                "tools": tools,
-                "tool_choice": "auto",
-                "temperature": 0.1,
-                "max_tokens": 512,
-                "stream": False
+            # Initialize Vertex AI
+            vertexai.init(
+                project=self.project_id,
+                location=self.location
+            )
+            
+            # Get the model
+            model = language_models.TextGenerationModel.from_pretrained(self.model_name)
+            
+            # Prepare messages for Vertex AI format
+            system_prompt = self.build_system_prompt()
+            conversation_messages = [{"role": "system", "content": system_prompt}] + messages[-5:]
+            
+            # Convert to Vertex AI format
+            vertex_messages = []
+            for msg in conversation_messages:
+                if msg["role"] == "system":
+                    vertex_messages.append(f"System: {msg['content']}")
+                elif msg["role"] == "user":
+                    vertex_messages.append(f"User: {msg['content']}")
+                elif msg["role"] == "assistant":
+                    vertex_messages.append(f"Assistant: {msg['content']}")
+            
+            # Join messages
+            prompt = "\n".join(vertex_messages)
+            
+            # Generate response
+            response = model.predict(
+                prompt,
+                temperature=0.1,
+                max_output_tokens=512
+            )
+            
+            # Convert response to expected format
+            return {
+                "choices": [{
+                    "message": {
+                        "content": response.text,
+                        "role": "assistant"
+                    }
+                }]
             }
-            
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json"
-            }
-            
-            response = requests.post(url, headers=headers, json=payload, timeout=30)
-            response.raise_for_status()
-            
-            return response.json()
             
         except Exception as e:
             print(f"Error invoking LLM: {e}")
