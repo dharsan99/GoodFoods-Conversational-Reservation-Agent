@@ -72,14 +72,35 @@ Available tools:
     def invoke_llm(self, messages: List[Dict], tools: List[Dict]) -> Dict:
         """Invoke the Llama 3.1 8B model via Google Cloud Vertex AI"""
         try:
-            # Use Vertex AI client library for proper authentication
+            # Set up Google Cloud credentials explicitly
+            import json
+            import os
+            from google.oauth2 import service_account
+            from google.cloud import aiplatform
+            
+            # Get credentials from environment variable
+            credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+            if not credentials_json:
+                print("Warning: GOOGLE_APPLICATION_CREDENTIALS not set")
+                return {"error": "Google Cloud credentials not configured"}
+            
+            # Parse the JSON credentials
+            if credentials_json.startswith('{'):
+                # It's a JSON string
+                creds_data = json.loads(credentials_json)
+                credentials = service_account.Credentials.from_service_account_info(creds_data)
+            else:
+                # It's a file path
+                credentials = service_account.Credentials.from_service_account_file(credentials_json)
+            
+            # Initialize Vertex AI with explicit credentials
             import vertexai
             from vertexai.preview import language_models
             
-            # Initialize Vertex AI with credentials
             vertexai.init(
                 project=self.project_id,
-                location=self.location
+                location=self.location,
+                credentials=credentials
             )
             
             # Get the model using the full model path
