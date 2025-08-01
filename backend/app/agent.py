@@ -4,8 +4,8 @@ import requests
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from dotenv import load_dotenv
-import tool_functions
-from tool_definitions import tools
+from . import tool_functions
+from .tool_definitions import tools
 from openai import OpenAI
 import google.auth
 import google.auth.transport.requests

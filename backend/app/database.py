@@ -8,29 +8,37 @@ import json
 class DatabaseManager:
     def __init__(self):
         self.db = Prisma()
+        self._loop = None
     
     def __enter__(self):
         """Context manager entry"""
-        asyncio.run(self.db.connect())
+        self._loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._loop)
+        self._loop.run_until_complete(self.db.connect())
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit"""
-        asyncio.run(self.db.disconnect())
+        if self._loop:
+            self._loop.run_until_complete(self.db.disconnect())
+            self._loop.close()
     
     def _connect(self):
         """Connect to the database"""
         try:
-            asyncio.run(self.db.connect())
+            self._loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self._loop)
+            self._loop.run_until_complete(self.db.connect())
         except Exception as e:
             print(f"Database connection failed: {e}")
             raise
     
     def disconnect(self):
         """Disconnect from the database"""
-        if self.db:
+        if self.db and self._loop:
             try:
-                asyncio.run(self.db.disconnect())
+                self._loop.run_until_complete(self.db.disconnect())
+                self._loop.close()
             except Exception as e:
                 print(f"Error disconnecting: {e}")
     
@@ -49,7 +57,7 @@ class DatabaseManager:
                 })
                 return restaurant.id
             
-            return asyncio.run(_add_restaurant())
+            return self._loop.run_until_complete(_add_restaurant())
         except Exception as e:
             print(f"Error adding restaurant: {e}")
             raise
@@ -64,7 +72,7 @@ class DatabaseManager:
                         'capacity': capacity
                     })
             
-            asyncio.run(_add_tables())
+            self._loop.run_until_complete(_add_tables())
         except Exception as e:
             print(f"Error adding tables: {e}")
             raise
@@ -79,7 +87,7 @@ class DatabaseManager:
                 })
                 return user.id
             
-            return asyncio.run(_add_user())
+            return self._loop.run_until_complete(_add_user())
         except Exception as e:
             print(f"Error adding user: {e}")
             raise
@@ -104,7 +112,7 @@ class DatabaseManager:
                 })
                 return booking.id
             
-            return asyncio.run(_create_booking())
+            return self._loop.run_until_complete(_create_booking())
         except Exception as e:
             print(f"Error creating booking: {e}")
             raise
@@ -145,7 +153,7 @@ class DatabaseManager:
                 
                 return result
             
-            return asyncio.run(_get_restaurants())
+            return self._loop.run_until_complete(_get_restaurants())
         except Exception as e:
             print(f"Error getting restaurants: {e}")
             return []
@@ -184,7 +192,7 @@ class DatabaseManager:
                 
                 return filtered_slots[:5]  # Return top 5 available slots
             
-            return asyncio.run(_check_availability())
+            return self._loop.run_until_complete(_check_availability())
             
         except Exception as e:
             print(f"Error checking availability: {e}")
@@ -217,7 +225,7 @@ class DatabaseManager:
                     }
                 return None
             
-            return asyncio.run(_get_booking())
+            return self._loop.run_until_complete(_get_booking())
         except Exception as e:
             print(f"Error getting booking: {e}")
             return None
@@ -232,7 +240,7 @@ class DatabaseManager:
                 )
                 return True
             
-            return asyncio.run(_cancel_booking())
+            return self._loop.run_until_complete(_cancel_booking())
         except Exception as e:
             print(f"Error cancelling booking: {e}")
             return False
@@ -253,7 +261,7 @@ class DatabaseManager:
                     }
                 return None
             
-            return asyncio.run(_get_user())
+            return self._loop.run_until_complete(_get_user())
         except Exception as e:
             print(f"Error getting user: {e}")
             return None

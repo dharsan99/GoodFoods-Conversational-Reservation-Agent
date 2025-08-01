@@ -2,7 +2,7 @@ import json
 import re
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
-from database import DatabaseManager
+from .database import DatabaseManager
 
 # Initialize database connection
 db = DatabaseManager()
