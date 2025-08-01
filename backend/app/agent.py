@@ -26,55 +26,13 @@ class GoodFoodsAgent:
         # Development mode flag
         self.dev_mode = os.getenv("DEV_MODE", "true").lower() == "true"
         
-        # Get Google Cloud access token
-        self.api_key = self._get_gcloud_token()
+        # No need for manual token - Vertex AI client handles authentication
+        pass
         
-    def _get_gcloud_token(self) -> str:
-        """Get Google Cloud access token using service account credentials"""
-        try:
-            import json
-            from google.auth import default
-            from google.auth.transport.requests import Request
-            
-            # Get credentials from environment variable
-            credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-            if not credentials_json:
-                print("Warning: GOOGLE_APPLICATION_CREDENTIALS not set")
-                return ""
-            
-            # Parse the JSON credentials
-            if credentials_json.startswith('{'):
-                # It's a JSON string
-                creds_data = json.loads(credentials_json)
-                # Create credentials object with proper scopes
-                from google.oauth2 import service_account
-                scopes = [
-                    'https://www.googleapis.com/auth/cloud-platform',
-                    'https://www.googleapis.com/auth/aiplatform.endpoints'
-                ]
-                credentials = service_account.Credentials.from_service_account_info(
-                    creds_data, 
-                    scopes=scopes
-                )
-            else:
-                # It's a file path
-                from google.oauth2 import service_account
-                scopes = [
-                    'https://www.googleapis.com/auth/cloud-platform',
-                    'https://www.googleapis.com/auth/aiplatform.endpoints'
-                ]
-                credentials = service_account.Credentials.from_service_account_file(
-                    credentials_json,
-                    scopes=scopes
-                )
-            
-            # Get access token
-            credentials.refresh(Request())
-            return credentials.token
-            
-        except Exception as e:
-            print(f"Warning: Could not get Google Cloud token: {e}")
-            return ""
+    # def _get_gcloud_token(self) -> str:
+    #     """Get Google Cloud access token using service account credentials"""
+    #     # This method is no longer needed - Vertex AI client handles authentication
+    #     pass
     
     def build_system_prompt(self) -> str:
         """Build the system prompt for the LLM"""
@@ -118,14 +76,15 @@ Available tools:
             import vertexai
             from vertexai.preview import language_models
             
-            # Initialize Vertex AI
+            # Initialize Vertex AI with credentials
             vertexai.init(
                 project=self.project_id,
                 location=self.location
             )
             
-            # Get the model
-            model = language_models.TextGenerationModel.from_pretrained(self.model_name)
+            # Get the model using the full model path
+            model_path = f"projects/{self.project_id}/locations/{self.location}/models/{self.model_name}"
+            model = language_models.TextGenerationModel.from_pretrained(model_path)
             
             # Prepare messages for Vertex AI format
             system_prompt = self.build_system_prompt()
