@@ -20,9 +20,7 @@ class GoodFoodsAgent:
         self.model_name = "7439580447044009984"  # Your trained Llama 3.1 8B model
         # We'll need to find the endpoint ID where this model is deployed
         # For now, let's try to find it automatically, but you can also set it manually
-        self.endpoint_id = None  # Will be set when we find the endpoint
-        # If you know your endpoint ID, you can uncomment and set it here:
-        # self.endpoint_id = "2841211713452244992"  # Example endpoint ID
+        self.endpoint_id = "2841211713452244992"  # Your endpoint ID
         
         # Initialize conversation state
         self.conversation_history = []
@@ -119,7 +117,7 @@ Available tools:
                         location=self.location, 
                         endpoint=self.endpoint_id
                     )
-                                else:
+                else:
                     # First, let's try to list available endpoints to see what's available
                     try:
                         from google.cloud import aiplatform
