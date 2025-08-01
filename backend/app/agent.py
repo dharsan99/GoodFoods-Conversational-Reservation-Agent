@@ -30,22 +30,36 @@ class GoodFoodsAgent:
         self.api_key = self._get_gcloud_token()
         
     def _get_gcloud_token(self) -> str:
-        """Get Google Cloud access token using gcloud CLI"""
+        """Get Google Cloud access token using service account credentials"""
         try:
-            import subprocess
-            result = subprocess.run(
-                ["gcloud", "auth", "print-access-token"],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
-            if result.returncode == 0:
-                return result.stdout.strip()
-            else:
-                print(f"Warning: Could not get gcloud token: {result.stderr}")
+            import json
+            from google.auth import default
+            from google.auth.transport.requests import Request
+            
+            # Get credentials from environment variable
+            credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+            if not credentials_json:
+                print("Warning: GOOGLE_APPLICATION_CREDENTIALS not set")
                 return ""
+            
+            # Parse the JSON credentials
+            if credentials_json.startswith('{'):
+                # It's a JSON string
+                creds_data = json.loads(credentials_json)
+                # Create credentials object
+                from google.oauth2 import service_account
+                credentials = service_account.Credentials.from_service_account_info(creds_data)
+            else:
+                # It's a file path
+                from google.oauth2 import service_account
+                credentials = service_account.Credentials.from_service_account_file(credentials_json)
+            
+            # Get access token
+            credentials.refresh(Request())
+            return credentials.token
+            
         except Exception as e:
-            print(f"Warning: Could not get gcloud token: {e}")
+            print(f"Warning: Could not get Google Cloud token: {e}")
             return ""
     
     def build_system_prompt(self) -> str:
