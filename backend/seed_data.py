@@ -47,13 +47,13 @@ def seed_database():
                 "Biryani", "Kebabs", "Seafood", "Vegetarian", "Multi-cuisine"
             ]
             
-            # Opening hours templates
+            # Opening hours templates (simplified JSON structure)
             opening_hours_templates = [
-                {"Mon-Fri": "12:00-23:00", "Sat-Sun": "11:00-23:30"},
-                {"Mon-Sun": "11:30-22:30"},
-                {"Mon-Fri": "11:00-22:00", "Sat-Sun": "10:30-23:00"},
-                {"Mon-Thu": "12:00-22:00", "Fri-Sun": "12:00-23:00"},
-                {"Mon-Sun": "12:00-23:00"}
+                {"monday": "12:00-23:00", "tuesday": "12:00-23:00", "wednesday": "12:00-23:00", "thursday": "12:00-23:00", "friday": "12:00-23:00", "saturday": "11:00-23:30", "sunday": "11:00-23:30"},
+                {"monday": "11:30-22:30", "tuesday": "11:30-22:30", "wednesday": "11:30-22:30", "thursday": "11:30-22:30", "friday": "11:30-22:30", "saturday": "11:30-22:30", "sunday": "11:30-22:30"},
+                {"monday": "11:00-22:00", "tuesday": "11:00-22:00", "wednesday": "11:00-22:00", "thursday": "11:00-22:00", "friday": "11:00-22:00", "saturday": "10:30-23:00", "sunday": "10:30-23:00"},
+                {"monday": "12:00-22:00", "tuesday": "12:00-22:00", "wednesday": "12:00-22:00", "thursday": "12:00-22:00", "friday": "12:00-23:00", "saturday": "12:00-23:00", "sunday": "12:00-23:00"},
+                {"monday": "12:00-23:00", "tuesday": "12:00-23:00", "wednesday": "12:00-23:00", "thursday": "12:00-23:00", "friday": "12:00-23:00", "saturday": "12:00-23:00", "sunday": "12:00-23:00"}
             ]
             
             print("🏪 Creating restaurants...")

@@ -1,281 +1,200 @@
-import os
+"""
+Database manager for GoodFoods AI Agent
+Handles all database operations using SQLite for local development
+"""
+
 import asyncio
-from typing import Dict, List, Optional
-from prisma import Prisma
-from datetime import datetime
-import json
+import os
+from typing import List, Dict, Any, Optional
+
+# Conditional import for Prisma (only for production)
+try:
+    from prisma import Prisma
+    PRISMA_AVAILABLE = True
+except ImportError:
+    PRISMA_AVAILABLE = False
 
 class DatabaseManager:
     def __init__(self):
-        self.db = Prisma()
-        self._loop = None
+        self._connection_string = os.getenv("DATABASE_URL", "sqlite:///./goodfoods.db")
+        # Only initialize Prisma if available
+        if PRISMA_AVAILABLE:
+            self.prisma = Prisma()
+        else:
+            self.prisma = None
     
     def __enter__(self):
         """Context manager entry"""
-        self._loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self._loop)
-        self._loop.run_until_complete(self.db.connect())
+        # For local development, we don't need Prisma connection
+        if self.prisma and PRISMA_AVAILABLE:
+            # Create a new event loop for this context
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
+            self.loop.run_until_complete(self.prisma.connect())
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit"""
-        if self._loop:
-            self._loop.run_until_complete(self.db.disconnect())
-            self._loop.close()
+        if self.prisma and PRISMA_AVAILABLE:
+            self.loop.run_until_complete(self.prisma.disconnect())
+            self.loop.close()
     
-    def _connect(self):
-        """Connect to the database"""
+    def execute_query(self, query: str, params: List[Any] = None) -> List[tuple]:
+        """
+        Execute a raw SQL query and return results
+        For development, we'll use a simple SQLite approach
+        """
         try:
-            self._loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self._loop)
-            self._loop.run_until_complete(self.db.connect())
-        except Exception as e:
-            print(f"Database connection failed: {e}")
-            raise
-    
-    def disconnect(self):
-        """Disconnect from the database"""
-        if self.db and self._loop:
-            try:
-                self._loop.run_until_complete(self.db.disconnect())
-                self._loop.close()
-            except Exception as e:
-                print(f"Error disconnecting: {e}")
-    
-    def add_restaurant(self, name: str, address: str, latitude: float, longitude: float, 
-                      cuisine_type: str, opening_hours: Dict) -> int:
-        """Add a new restaurant to the database."""
-        try:
-            async def _add_restaurant():
-                restaurant = await self.db.restaurant.create({
-                    'name': name,
-                    'address': address,
-                    'latitude': latitude,
-                    'longitude': longitude,
-                    'cuisineType': cuisine_type,
-                    'openingHours': opening_hours
-                })
-                return restaurant.id
+            import sqlite3
+            import os
             
-            return self._loop.run_until_complete(_add_restaurant())
-        except Exception as e:
-            print(f"Error adding restaurant: {e}")
-            raise
-    
-    def add_tables_to_restaurant(self, restaurant_id: int, table_capacities: List[int]):
-        """Add tables to a restaurant with specified capacities."""
-        try:
-            async def _add_tables():
-                for capacity in table_capacities:
-                    await self.db.table.create({
-                        'restaurantId': restaurant_id,
-                        'capacity': capacity
-                    })
+            # Create database connection with absolute path
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            db_path = os.path.join(current_dir, "..", "goodfoods.db")
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
             
-            self._loop.run_until_complete(_add_tables())
-        except Exception as e:
-            print(f"Error adding tables: {e}")
-            raise
-    
-    def add_user(self, name: str, phone_number: str) -> int:
-        """Add a new user to the database."""
-        try:
-            async def _add_user():
-                user = await self.db.user.create({
-                    'name': name,
-                    'phoneNumber': phone_number
-                })
-                return user.id
-            
-            return self._loop.run_until_complete(_add_user())
-        except Exception as e:
-            print(f"Error adding user: {e}")
-            raise
-    
-    def create_booking(self, restaurant_id: int, user_id: int, booking_time: str, 
-                      num_guests: int, special_requests: Optional[str] = None) -> int:
-        """Create a new booking."""
-        try:
-            # Parse the booking time string to datetime
-            if isinstance(booking_time, str):
-                booking_datetime = datetime.fromisoformat(booking_time.replace('Z', '+00:00'))
+            # Execute query
+            if params:
+                cursor.execute(query, params)
             else:
-                booking_datetime = booking_time
+                cursor.execute(query)
             
-            async def _create_booking():
-                booking = await self.db.booking.create({
-                    'restaurantId': restaurant_id,
-                    'userId': user_id,
-                    'bookingTime': booking_datetime,
-                    'numGuests': num_guests,
-                    'specialRequests': special_requests
-                })
-                return booking.id
+            # Fetch results
+            results = cursor.fetchall()
             
-            return self._loop.run_until_complete(_create_booking())
+            # Commit if it's an INSERT/UPDATE/DELETE
+            if query.strip().upper().startswith(('INSERT', 'UPDATE', 'DELETE')):
+                conn.commit()
+            
+            conn.close()
+            return results
+            
         except Exception as e:
-            print(f"Error creating booking: {e}")
-            raise
+            print(f"Database query error: {e}")
+            return []
     
-    def get_restaurants(self, location: Optional[str] = None, cuisine: Optional[str] = None) -> List[Dict]:
-        """Get restaurants filtered by location and/or cuisine."""
+    def get_last_insert_id(self) -> int:
+        """Get the last inserted row ID"""
         try:
-            async def _get_restaurants():
-                where_conditions = {}
-                
-                if location:
-                    where_conditions['OR'] = [
-                        {'address': {'contains': location}},
-                        {'name': {'contains': location}}
-                    ]
-                
-                if cuisine:
-                    where_conditions['cuisineType'] = {'contains': cuisine}
-                
-                restaurants = await self.db.restaurant.find_many(
-                    where=where_conditions if where_conditions else None,
-                    include={
-                        'tables': True
-                    }
-                )
-                
-                result = []
-                for restaurant in restaurants:
-                    result.append({
-                        'restaurant_id': restaurant.id,
-                        'name': restaurant.name,
-                        'address': restaurant.address,
-                        'latitude': restaurant.latitude,
-                        'longitude': restaurant.longitude,
-                        'cuisine_type': restaurant.cuisineType,
-                        'opening_hours': restaurant.openingHours
-                    })
-                
-                return result
+            import sqlite3
+            import os
             
-            return self._loop.run_until_complete(_get_restaurants())
+            # Create database connection with absolute path
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            db_path = os.path.join(current_dir, "..", "goodfoods.db")
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT last_insert_rowid()")
+            result = cursor.fetchone()
+            conn.close()
+            
+            return result[0] if result else 0
+            
+        except Exception as e:
+            print(f"Error getting last insert ID: {e}")
+            return 0
+
+    # Prisma-based methods (for future use)
+    async def get_restaurants(self, location: Optional[str] = None, cuisine: Optional[str] = None) -> List[Dict]:
+        """Get restaurants with optional filtering"""
+        try:
+            where_conditions = {}
+            
+            if location:
+                where_conditions["OR"] = [
+                    {"address": {"contains": location}},
+                    {"name": {"contains": location}}
+                ]
+            
+            if cuisine:
+                where_conditions["cuisine_type"] = {"contains": cuisine}
+            
+            restaurants = await self.prisma.restaurant.find_many(where=where_conditions)
+            return [restaurant.dict() for restaurant in restaurants]
+            
         except Exception as e:
             print(f"Error getting restaurants: {e}")
             return []
-    
-    def check_availability(self, restaurant_id: int, date: str, time: str, party_size: int) -> List[str]:
-        """Check available time slots for a given restaurant, date, and party size."""
+
+    async def create_user_if_not_exists(self, name: str, phone_number: str) -> int:
+        """Create a user if they don't exist, return user ID"""
         try:
-            # Parse the date and time
-            date_obj = datetime.strptime(date, '%Y-%m-%d')
-            time_obj = datetime.strptime(time, '%H:%M').time()
+            # Check if user exists
+            existing_user = await self.prisma.user.find_unique(where={"phone_number": phone_number})
             
-            # Create datetime for the requested booking time
-            requested_datetime = datetime.combine(date_obj.date(), time_obj)
+            if existing_user:
+                return existing_user.id
             
-            async def _check_availability():
-                # Get existing bookings for this restaurant on this date
-                existing_bookings = await self.db.booking.find_many(
-                    where={
-                        'restaurantId': restaurant_id,
-                        'bookingTime': {
-                            'gte': date_obj,
-                            'lt': date_obj.replace(hour=23, minute=59, second=59)
-                        },
-                        'status': 'confirmed'
-                    }
-                )
-                
-                # Mock available time slots (in a real system, this would be calculated based on table capacities)
-                available_slots = [
-                    "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
-                    "19:00", "19:30", "20:00", "20:30", "21:00", "21:30"
-                ]
-                
-                # Filter out the requested time
-                filtered_slots = [slot for slot in available_slots if slot != time]
-                
-                return filtered_slots[:5]  # Return top 5 available slots
+            # Create new user
+            new_user = await self.prisma.user.create(data={
+                "name": name,
+                "phone_number": phone_number
+            })
             
-            return self._loop.run_until_complete(_check_availability())
+            return new_user.id
             
         except Exception as e:
-            print(f"Error checking availability: {e}")
-            return []
-    
-    def get_booking(self, booking_id: int) -> Optional[Dict]:
-        """Get booking details by booking ID."""
+            print(f"Error creating user: {e}")
+            return 0
+
+    async def create_booking(self, restaurant_id: int, user_id: int, booking_time: str, 
+                           num_guests: int, special_requests: Optional[str] = None) -> int:
+        """Create a new booking"""
         try:
-            async def _get_booking():
-                booking = await self.db.booking.find_unique(
-                    where={'id': booking_id},
-                    include={
-                        'restaurant': True,
-                        'user': True
-                    }
-                )
-                
-                if booking:
-                    return {
-                        'booking_id': booking.id,
-                        'restaurant_id': booking.restaurantId,
-                        'user_id': booking.userId,
-                        'booking_time': booking.bookingTime.isoformat(),
-                        'num_guests': booking.numGuests,
-                        'status': booking.status,
-                        'special_requests': booking.specialRequests,
-                        'restaurant_name': booking.restaurant.name,
-                        'user_name': booking.user.name,
-                        'phone_number': booking.user.phoneNumber
-                    }
-                return None
+            booking = await self.prisma.booking.create(data={
+                "restaurant_id": restaurant_id,
+                "user_id": user_id,
+                "booking_time": booking_time,
+                "num_guests": num_guests,
+                "status": "confirmed",
+                "special_requests": special_requests
+            })
             
-            return self._loop.run_until_complete(_get_booking())
+            return booking.id
+            
+        except Exception as e:
+            print(f"Error creating booking: {e}")
+            return 0
+
+    async def get_booking(self, booking_id: int) -> Optional[Dict]:
+        """Get booking details with restaurant and user info"""
+        try:
+            booking = await self.prisma.booking.find_unique(
+                where={"booking_id": booking_id},
+                include={
+                    "restaurant": True,
+                    "user": True
+                }
+            )
+            
+            if booking:
+                return {
+                    "booking_id": booking.booking_id,
+                    "restaurant_name": booking.restaurant.name,
+                    "user_name": booking.user.name,
+                    "phone_number": booking.user.phone_number,
+                    "booking_time": booking.booking_time,
+                    "num_guests": booking.num_guests,
+                    "status": booking.status,
+                    "special_requests": booking.special_requests
+                }
+            
+            return None
+            
         except Exception as e:
             print(f"Error getting booking: {e}")
             return None
-    
-    def cancel_booking(self, booking_id: int) -> bool:
-        """Cancel a booking by setting its status to 'cancelled'."""
+
+    async def cancel_booking(self, booking_id: int) -> bool:
+        """Cancel a booking"""
         try:
-            async def _cancel_booking():
-                booking = await self.db.booking.update(
-                    where={'id': booking_id},
-                    data={'status': 'cancelled'}
-                )
-                return True
+            await self.prisma.booking.update(
+                where={"booking_id": booking_id},
+                data={"status": "cancelled"}
+            )
+            return True
             
-            return self._loop.run_until_complete(_cancel_booking())
         except Exception as e:
             print(f"Error cancelling booking: {e}")
-            return False
-    
-    def get_user_by_phone(self, phone_number: str) -> Optional[Dict]:
-        """Get user by phone number."""
-        try:
-            async def _get_user():
-                user = await self.db.user.find_unique(
-                    where={'phoneNumber': phone_number}
-                )
-                
-                if user:
-                    return {
-                        'user_id': user.id,
-                        'name': user.name,
-                        'phone_number': user.phoneNumber
-                    }
-                return None
-            
-            return self._loop.run_until_complete(_get_user())
-        except Exception as e:
-            print(f"Error getting user: {e}")
-            return None
-    
-    def create_user_if_not_exists(self, name: str, phone_number: str) -> int:
-        """Create a user if they don't exist, otherwise return existing user ID."""
-        try:
-            # Try to find existing user
-            existing_user = self.get_user_by_phone(phone_number)
-            if existing_user:
-                return existing_user['user_id']
-            
-            # Create new user
-            return self.add_user(name, phone_number)
-        except Exception as e:
-            print(f"Error creating user: {e}")
-            raise 
+            return False 

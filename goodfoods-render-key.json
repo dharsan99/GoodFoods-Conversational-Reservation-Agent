@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "speechtotext-466820",
+  "private_key_id": "8cb527266b35ce9d71ef631de4397324dc09d227",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDKvyvxyMkuVJJy\nuq2TExt7FZ1CfwwW2aDuCNnR3/dJVs6YVC3AhkgZTd1diskTR5fIgnziL4FdPUxn\n966HSWUfhEVjLymgvXPRX4+M4SIZnJI3b80dw9TFMtimgOjiHTqKye26TOldUHyh\niCaluGHoBSjr5GCYTSdwv99GS6NbbhaM9tTdxbeEQzEU614HsXteN0jFHcKWPF4z\nOZCfiZGkOYAZ5T/FkQKAdIknMskspC1E+wqssBkEEiJkRSZYZCN4JkQbbjg2GRF2\nB2kuvBk9rwrh1en6nffOu67sDl9uKjVTLBhKGb9PmIMM1sdTFmXlAz/Gvx9iY4Jv\nWkMfzPBRAgMBAAECggEACU2dqasPl6Bu1eIqlPG8lG9/ri2EqmwJ51JFpigX+GgJ\n89GWKm5V0r9sR96fpdKdY3Gg0PEG9Rr2dqVoNh+00/cumVYC5OrO2lba2VlotBcn\nf0xtqmpWpGqxg5HSAmojXHsftBccq6IhVwtOYhwtmn3+Hse+vPLoO1NM3o/1PTN8\ntyQePM86TQG2hztquZOXK6V//eTAWNt0kSf5usfw7374iZg7Dftmsyzn9R4msMEX\nMu9DQ4E0Ka0c0qPHEQ61gz2K/x1zAz7KPRwHCW8yUZlYe8a0INSWlRkU6VOXrTTi\nPuNXfG3x8uCSWAQzihHCAUGyg4ZbhNfcx0C/opZdVwKBgQDsx9VAWHyeG0X3zYYW\nfl3kzzZocxFfsBf56jq2fuFdXhZwJT0GesGK9HYT6GAApOyhTEEXrDSjHmPhnRi0\nimpa/po3zhRLY1Z+e6Dt+Pw07aUIcE0zAHH4kHNfvUxdTPW0lNnGYfzRsJ627cPC\nJwhVc8MaePdwGD3CWWzqJJBpBwKBgQDbNCKDxlOm4tZiReLfRD+JnG1Um/Mhm7bI\nbfGctCPXVk0WtKdwWKQ5cfERvwrKOoYiMncOx5nTNVf8yAW9+nTOZUHknNkHjJzV\nRw3hXhfD/kupN+Rh0LhZ5T+O+eL1exuhlHeinzyR52mTpKldYPes1zYboP+E8HZg\nAhiQ42y95wKBgQC2c/W7M3QzUMjFfjVIt+8aFSHTsnc8yLBw/zBm17ZI/+tCVy+D\nAqyIqn8iL/lqBavhTqUJ3MRivVQx0Z/r3oy9uVqUjdPNk6pepF0Jgsa08jotGnwi\nRMGNy6FbsL5bVqYulFSLLY5m9jYWt3gU74bYce9xQq1ITyWn0MjAU5SDmQKBgFwD\neHGEMN0e3wsFdwRta5ZiOWqIw/hZmtJrhD5ZR6o+qcFcN+Tq8JTEhYMDhI37Hw7/\nzAZCNwn3nGWZuP9UQO/ahVxnkpqepb7JQsRVcPhuqGfx9EYzDQ9/MbzcnC6bbK/Y\n2JdE7HH6h9DYD9gIui6tcCMM4/Vz0tzeRF2deaoFAoGAPgeMDNNuCBJ709YHcUfj\ncbLiyk+UEPq9w3GnNR7eFSAWTCztbhzWf7WVh7ZMyq29rNNVexdQaxxlnXowfzxP\nFqzW5SkgSnaDuWWpu7qrkuPku1Z5eMa+aQkZ6zfZ26tSPSvp3jM729rKO0SVccdm\nmZjSsI78vgLx6930lcKhqZk=\n-----END PRIVATE KEY-----\n",
+  "client_email": "goodfoods-render-service@speechtotext-466820.iam.gserviceaccount.com",
+  "client_id": "106600650322014711443",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/goodfoods-render-service%40speechtotext-466820.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

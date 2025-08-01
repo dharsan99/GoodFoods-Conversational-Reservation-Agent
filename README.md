@@ -52,6 +52,49 @@ GoodFoods-Conversational-Reservation-Agent/
 └── docker-compose.yml          # For local development
 ```
 
+## Deployment
+
+### 🚀 Render Deployment (Recommended)
+
+The application is configured for easy deployment to Render with Docker containers.
+
+#### Quick Deployment
+1. **Push to GitHub**: Ensure your code is in a GitHub repository
+2. **Connect to Render**: 
+   - Go to [dashboard.render.com](https://dashboard.render.com)
+   - Click "New +" > "Web Service"
+   - Connect your GitHub repository
+3. **Automatic Deployment**: Render will detect `render.yaml` and deploy both services automatically
+
+#### Manual Deployment
+Follow the detailed guide in [RENDER_DEPLOYMENT_GUIDE.md](RENDER_DEPLOYMENT_GUIDE.md)
+
+#### Environment Variables Required
+```bash
+# Backend Service
+DEV_MODE=false
+GOOGLE_CLOUD_PROJECT_ID=speechtotext-466820
+GOOGLE_CLOUD_LOCATION=us-central1
+GOOGLE_APPLICATION_CREDENTIALS=<your-service-account-json>
+
+# Frontend Service
+BACKEND_URL=https://your-backend-service.onrender.com
+```
+
+### 🐳 Local Docker Deployment
+
+```bash
+# Build and run with Docker Compose
+docker-compose up --build
+
+# Access the application
+# Frontend: http://localhost:8501
+# Backend: http://localhost:8000
+```
+
+### 📋 Deployment Checklist
+Use [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) for step-by-step verification.
+
 ## Features
 
 ### Core Functionality (Green - Implementation Ready)

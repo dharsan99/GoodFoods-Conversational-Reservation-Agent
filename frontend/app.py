@@ -44,6 +44,20 @@ st.markdown("""
     .stButton > button:hover {
         background-color: #0d5aa7;
     }
+    .agent-message {
+        background-color: #e3f2fd;
+        border-left: 4px solid #1f77b4;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 5px;
+    }
+    .user-message {
+        background-color: #f5f5f5;
+        border-left: 4px solid #666;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 5px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -101,83 +115,112 @@ def display_sidebar():
             st.session_state.show_samples = True
             st.rerun()
         
-        if st.button("Check Backend Status", type="secondary"):
-            try:
-                response = requests.get(f"{st.session_state.backend_url}/health", timeout=5)
-                if response.status_code == 200:
-                    st.success("Backend is connected and healthy!")
-                else:
-                    st.error("Backend is not responding properly")
-            except Exception as e:
-                st.error(f"Backend connection failed: {str(e)}")
-            st.rerun()
+        st.divider()
+        
+        st.header("Backend Status")
+        if st.session_state.backend_connected:
+            st.success("✅ Backend Connected")
+        else:
+            st.error("❌ Backend Disconnected")
+            st.info("Make sure the backend server is running on http://localhost:8000")
         
         st.divider()
         
-        st.header("Contact Information")
+        st.header("API Documentation")
+        st.markdown(f"[View API Docs]({st.session_state.backend_url}/docs)")
+        
+        st.divider()
+        
+        st.header("About the AI Agent")
         st.markdown("""
-        **Customer Support:** +91-1800-GOODFOODS  
-        **Email:** support@goodfoods.in  
-        **Hours:** 24/7 AI Support
+        **Samvaad** uses Llama 3.1 8B model with advanced tool calling capabilities to provide intelligent restaurant assistance.
+        
+        **Features:**
+        - Natural language understanding
+        - Tool calling for database operations
+        - Conversation memory
+        - Multi-step booking process
         """)
-        
-        st.divider()
-        
-        # Display conversation stats
-        if st.session_state.messages:
-            st.header("Conversation Stats")
-            st.metric("Messages", len(st.session_state.messages))
-            st.metric("Backend Status", "Connected" if st.session_state.backend_connected else "Disconnected")
 
 def display_sample_queries():
     """Display sample queries for users to try."""
     if st.session_state.get("show_samples", False):
-        st.markdown("### Try these sample queries:")
+        st.subheader("Try these sample queries:")
         
-        col1, col2 = st.columns(2)
+        samples = [
+            "Find restaurants in Koramangala",
+            "I want to book a table for 4 people tomorrow at 8 PM",
+            "Show me Italian restaurants",
+            "Check my booking GF000001",
+            "Cancel my booking GF000001",
+            "What restaurants serve Chinese food?",
+            "Book a table for 2 people at GoodFoods Indiranagar for Friday at 7 PM"
+        ]
         
-        with col1:
-            st.markdown("**Find Restaurants:**")
-            sample_queries = [
-                "Find restaurants in Koramangala",
-                "Show me Italian restaurants",
-                "I want to find GoodFoods near Indiranagar",
-                "What restaurants serve North Indian food?"
-            ]
+        for i, sample in enumerate(samples, 1):
+            if st.button(f"{i}. {sample}", key=f"sample_{i}"):
+                st.session_state.sample_query = sample
+                st.session_state.show_samples = False
+                st.rerun()
+        
+        if st.button("Close Samples"):
+            st.session_state.show_samples = False
+            st.rerun()
+
+def send_message_to_agent(message: str) -> str:
+    """Send a message to the AI agent and get response."""
+    try:
+        # Prepare the request
+        payload = {
+            "message": message,
+            "conversation_history": st.session_state.messages
+        }
+        
+        # Send request to backend
+        response = requests.post(
+            f"{st.session_state.backend_url}/chat",
+            json=payload,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return data["response"]
+        else:
+            return f"Error: Backend returned status code {response.status_code}"
             
-            for query in sample_queries:
-                if st.button(query, key=f"sample_{query[:20]}"):
-                    st.session_state.user_input = query
-                    st.session_state.show_samples = False
-                    st.rerun()
-        
-        with col2:
-            st.markdown("**Make Bookings:**")
-            booking_queries = [
-                "Book a table for 4 people tomorrow at 8 PM",
-                "I need a reservation for 2 at GoodFoods Koramangala",
-                "Check availability for 6 people this Saturday",
-                "Cancel my booking GFS00001"
-            ]
-            
-            for query in booking_queries:
-                if st.button(query, key=f"sample_{query[:20]}"):
-                    st.session_state.user_input = query
-                    st.session_state.show_samples = False
-                    st.rerun()
+    except requests.exceptions.RequestException as e:
+        return f"Error connecting to backend: {str(e)}"
+    except Exception as e:
+        return f"Error processing request: {str(e)}"
 
 def display_chat_interface():
     """Display the main chat interface."""
-    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+    st.subheader("Chat with Samvaad")
     
-    # Display chat messages
+    # Display conversation history
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
     
+    # Handle sample query if set
+    if hasattr(st.session_state, 'sample_query'):
+        user_message = st.session_state.sample_query
+        del st.session_state.sample_query
+        
+        # Add user message to chat
+        st.session_state.messages.append({"role": "user", "content": user_message})
+        
+        # Get agent response
+        with st.chat_message("assistant"):
+            with st.spinner("Samvaad is thinking..."):
+                response = send_message_to_agent(user_message)
+                st.markdown(response)
+                st.session_state.messages.append({"role": "assistant", "content": response})
+    
     # Chat input
-    if prompt := st.chat_input("How can I help you book a table today?"):
-        # Add user message to chat history
+    if prompt := st.chat_input("How can I help you book a table?"):
+        # Add user message to chat
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         # Display user message
@@ -186,55 +229,20 @@ def display_chat_interface():
         
         # Get assistant response
         with st.chat_message("assistant"):
-            if st.session_state.backend_connected:
-                with st.spinner("Thinking..."):
-                    try:
-                        # Call the backend API
-                        api_response = requests.post(
-                            f"{st.session_state.backend_url}/chat",
-                            json={
-                                "message": prompt,
-                                "history": st.session_state.messages
-                            },
-                            timeout=30
-                        )
-                        
-                        if api_response.status_code == 200:
-                            response_data = api_response.json()
-                            response = response_data["reply"]
-                            st.markdown(response)
-                        else:
-                            st.error(f"Backend error: {api_response.status_code}")
-                            response = "I apologize, but I encountered an error. Please try again."
-                    
-                    except requests.exceptions.RequestException as e:
-                        st.error(f"Connection error: {str(e)}")
-                        response = "I apologize, but I cannot connect to the backend service. Please check your configuration."
-            else:
-                st.error("Backend not connected. Please check the backend service.")
-                response = "I apologize, but I'm currently unavailable. Please check the backend connection."
-        
-        # Add assistant response to chat history
-        st.session_state.messages.append({"role": "assistant", "content": response})
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+            with st.spinner("Samvaad is thinking..."):
+                response = send_message_to_agent(prompt)
+                st.markdown(response)
+                st.session_state.messages.append({"role": "assistant", "content": response})
 
 def display_footer():
     """Display the footer with additional information."""
-    st.markdown("---")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("**Supported Languages**")
-        st.markdown("English, Hindi, Kannada, Tamil")
-    
-    with col2:
-        st.markdown("**Available Cities**")
-        st.markdown("Bangalore, Mumbai, Delhi, Chennai, Hyderabad, Pune, Kolkata, Ahmedabad")
-    
-    with col3:
-        st.markdown("**Cuisines**")
-        st.markdown("North Indian, South Indian, Chinese, Italian, Continental, and more")
+    st.divider()
+    st.markdown("""
+    <div style='text-align: center; color: #666; font-size: 0.8rem;'>
+        <p>GoodFoods AI Reservation Assistant | Powered by Llama 3.1 8B</p>
+        <p>Built with FastAPI, Streamlit, and Google Cloud Vertex AI</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 def main():
     """Main application function."""
@@ -250,15 +258,36 @@ def main():
     # Display sample queries if requested
     display_sample_queries()
     
-    # Display main chat interface
-    display_chat_interface()
+    # Main content area
+    if st.session_state.backend_connected:
+        # Display chat interface
+        display_chat_interface()
+    else:
+        # Show connection error
+        st.error("⚠️ Cannot connect to the backend server")
+        st.info("""
+        Please make sure the backend server is running:
+        
+        1. Open a terminal in the `backend` directory
+        2. Run: `python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
+        3. Refresh this page once the server is running
+        """)
+        
+        # Show backend status check
+        if st.button("Check Backend Connection"):
+            try:
+                response = requests.get(f"{st.session_state.backend_url}/health", timeout=5)
+                if response.status_code == 200:
+                    st.session_state.backend_connected = True
+                    st.success("✅ Backend is now connected!")
+                    st.rerun()
+                else:
+                    st.error(f"Backend returned status code: {response.status_code}")
+            except Exception as e:
+                st.error(f"Connection failed: {str(e)}")
     
     # Display footer
     display_footer()
-    
-    # Handle user input from sample queries
-    if hasattr(st.session_state, 'user_input'):
-        del st.session_state.user_input
 
 if __name__ == "__main__":
     main() 
