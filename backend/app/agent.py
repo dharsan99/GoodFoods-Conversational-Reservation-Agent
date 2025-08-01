@@ -176,16 +176,30 @@ Available tools:
                 # Join messages
                 prompt = "\n".join(vertex_messages)
                 
-                # Create instance for prediction
-                instance = {"prompt": prompt}
-                instances = [json_format.ParseDict(instance, Value())]
-                
-                # Make prediction
-                response = client.predict(
-                    endpoint=endpoint, 
-                    instances=instances, 
-                    parameters=json_format.ParseDict({}, Value())
-                )
+                # Create instance for prediction - try different formats
+                try:
+                    # Try with "prompt" key first
+                    instance = {"prompt": prompt}
+                    instances = [json_format.ParseDict(instance, Value())]
+                    
+                    # Make prediction
+                    response = client.predict(
+                        endpoint=endpoint, 
+                        instances=instances, 
+                        parameters=json_format.ParseDict({}, Value())
+                    )
+                except Exception as e:
+                    print(f"Failed with 'prompt' key, trying 'input_text': {e}")
+                    # Try with "input_text" key
+                    instance = {"input_text": prompt}
+                    instances = [json_format.ParseDict(instance, Value())]
+                    
+                    # Make prediction
+                    response = client.predict(
+                        endpoint=endpoint, 
+                        instances=instances, 
+                        parameters=json_format.ParseDict({}, Value())
+                    )
                 
                 # Extract prediction
                 if response.predictions:
@@ -250,22 +264,14 @@ Available tools:
             
             # Use base model - try different model names
             try:
-                model = language_models.TextGenerationModel.from_pretrained("llama3-1-8b")
+                model = language_models.TextGenerationModel.from_pretrained("gemini-1.5-flash")
             except Exception as e:
-                print(f"Failed with llama3-1-8b, trying meta/llama-3.1-8b-instruct: {e}")
+                print(f"Failed with gemini-1.5-flash, trying gemini-1.5-pro: {e}")
                 try:
-                    model = language_models.TextGenerationModel.from_pretrained("meta/llama-3.1-8b-instruct")
+                    model = language_models.TextGenerationModel.from_pretrained("gemini-1.5-pro")
                 except Exception as e2:
-                    print(f"Failed with meta/llama-3.1-8b-instruct, trying llama-3.1-8b: {e2}")
-                    try:
-                        model = language_models.TextGenerationModel.from_pretrained("llama-3.1-8b")
-                    except Exception as e3:
-                        print(f"Failed with llama-3.1-8b, trying meta/llama-3.1-8b: {e3}")
-                        try:
-                            model = language_models.TextGenerationModel.from_pretrained("meta/llama-3.1-8b")
-                        except Exception as e4:
-                            print(f"Failed with meta/llama-3.1-8b, trying gemini-1.5-flash: {e4}")
-                            model = language_models.TextGenerationModel.from_pretrained("gemini-1.5-flash")
+                    print(f"Failed with gemini-1.5-pro, trying gemini-1.0-pro: {e2}")
+                    model = language_models.TextGenerationModel.from_pretrained("gemini-1.0-pro")
             
             # Prepare messages for Vertex AI format
             system_prompt = self.build_system_prompt()
