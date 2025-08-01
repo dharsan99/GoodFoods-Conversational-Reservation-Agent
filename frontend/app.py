@@ -233,6 +233,22 @@ def display_chat_interface():
                 response = send_message_to_agent(prompt)
                 st.markdown(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
+    
+    # Auto-scroll to bottom using JavaScript
+    # Create a container for the scroll script
+    scroll_container = st.empty()
+    scroll_container.markdown("""
+    <script>
+        // Scroll to bottom of the page
+        window.scrollTo(0, document.body.scrollHeight);
+        
+        // Also scroll the chat container if it exists
+        const chatContainer = document.querySelector('[data-testid="stChatMessageContainer"]');
+        if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    </script>
+    """, unsafe_allow_html=True)
 
 def display_footer():
     """Display the footer with additional information."""

@@ -22,6 +22,11 @@ COPY . .
 # Create directory for database
 RUN mkdir -p /app/data
 
+# Note: Using SQLite for deployment, Prisma not needed
+
+# Set up database with sample data
+RUN python setup_database.py
+
 # Expose port
 EXPOSE 8000
 

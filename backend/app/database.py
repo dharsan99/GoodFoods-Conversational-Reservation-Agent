@@ -8,6 +8,7 @@ import os
 from typing import List, Dict, Any, Optional
 
 # Conditional import for Prisma (only for production)
+PRISMA_AVAILABLE = False  # Disabled for deployment
 try:
     from prisma import Prisma
     PRISMA_AVAILABLE = True
