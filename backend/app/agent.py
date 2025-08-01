@@ -107,16 +107,7 @@ Available tools:
             
             # Try to get the model and find its endpoint
             try:
-                # First, let's try using the model directly as an endpoint ID
-                endpoint = client.endpoint_path(
-                    project=self.project_id, 
-                    location=self.location, 
-                    endpoint=self.model_name
-                )
-                
-                print(f"Trying endpoint: {endpoint}")
-                
-                # Let's also try to list available endpoints to see what's available
+                # First, let's try to list available endpoints to see what's available
                 try:
                     from google.cloud import aiplatform
                     endpoints = aiplatform.Endpoint.list(
@@ -124,8 +115,35 @@ Available tools:
                         location=self.location
                     )
                     print(f"Available endpoints: {[ep.display_name for ep in endpoints]}")
+                    
+                    # Look for an endpoint that might contain our model ID
+                    target_endpoint = None
+                    for ep in endpoints:
+                        if self.model_name in ep.display_name or self.model_name in str(ep.resource_name):
+                            target_endpoint = ep
+                            break
+                    
+                    if target_endpoint:
+                        print(f"Found matching endpoint: {target_endpoint.display_name}")
+                        endpoint = target_endpoint.resource_name
+                    else:
+                        print("No matching endpoint found, trying model ID as endpoint")
+                        endpoint = client.endpoint_path(
+                            project=self.project_id, 
+                            location=self.location, 
+                            endpoint=self.model_name
+                        )
+                        
                 except Exception as list_error:
                     print(f"Could not list endpoints: {list_error}")
+                    # Fallback to using model ID as endpoint
+                    endpoint = client.endpoint_path(
+                        project=self.project_id, 
+                        location=self.location, 
+                        endpoint=self.model_name
+                    )
+                
+                print(f"Trying endpoint: {endpoint}")
                 
                 # Prepare the prompt
                 system_prompt = self.build_system_prompt()
@@ -229,7 +247,11 @@ Available tools:
                         model = language_models.TextGenerationModel.from_pretrained("llama-3.1-8b")
                     except Exception as e3:
                         print(f"Failed with llama-3.1-8b, trying meta/llama-3.1-8b: {e3}")
-                        model = language_models.TextGenerationModel.from_pretrained("meta/llama-3.1-8b")
+                        try:
+                            model = language_models.TextGenerationModel.from_pretrained("meta/llama-3.1-8b")
+                        except Exception as e4:
+                            print(f"Failed with meta/llama-3.1-8b, trying gemini-1.5-flash: {e4}")
+                            model = language_models.TextGenerationModel.from_pretrained("gemini-1.5-flash")
             
             # Prepare messages for Vertex AI format
             system_prompt = self.build_system_prompt()
