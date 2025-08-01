@@ -6,6 +6,9 @@ from typing import Dict, List, Optional, Any
 from dotenv import load_dotenv
 import tool_functions
 from tool_definitions import tools
+from openai import OpenAI
+import google.auth
+import google.auth.transport.requests
 
 # Load environment variables
 load_dotenv()
@@ -14,20 +17,41 @@ class GoodFoodsAgent:
     """
     The core conversational agent for GoodFoods restaurant reservations.
     Implements a from-scratch tool-calling approach without using frameworks like LangChain.
+    Uses Google Cloud Vertex AI for Llama 3.1 8B.
     """
     
     def __init__(self):
-        self.api_key = os.getenv("API_KEY")
-        if not self.api_key:
-            raise ValueError("API_KEY environment variable is required")
+        # Google Cloud configuration
+        self.project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
+        self.location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+        self.model_id = "meta/llama-3.1-8b-instruct-maas"
         
-        # You can change this to your preferred Llama 3.1 8B API endpoint
-        self.api_url = "https://api.deepinfra.com/v1/chat/completions"
-        self.model = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+        if not self.project_id:
+            raise ValueError("GOOGLE_CLOUD_PROJECT_ID environment variable is required")
+        
+        # Initialize OpenAI client for Vertex AI
+        self.client = self._initialize_vertex_ai_client()
         
         # Conversation state
         self.conversation_history = []
         self.current_context = {}
+    
+    def _initialize_vertex_ai_client(self):
+        """Initialize the OpenAI client for Google Cloud Vertex AI."""
+        try:
+            # Get GCP access token
+            credentials, _ = google.auth.default()
+            auth_req = google.auth.transport.requests.Request()
+            credentials.refresh(auth_req)
+            gcp_token = credentials.token
+            
+            # Initialize OpenAI client pointing to Vertex AI
+            return OpenAI(
+                api_key=gcp_token,
+                base_url=f"https://{self.location}-aiplatform.googleapis.com/v1/projects/{self.project_id}/locations/{self.location}/endpoints/openapi"
+            )
+        except Exception as e:
+            raise ValueError(f"Failed to initialize Vertex AI client: {e}")
     
     def build_system_prompt(self) -> str:
         """Build the system prompt that instructs the LLM on its role and capabilities."""
@@ -66,28 +90,29 @@ Remember: You are representing GoodFoods, a premium restaurant chain. Always be 
         return messages
     
     def invoke_llm(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
-        """Invoke the Llama 3.1 8B API with the given messages."""
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "tools": tools,
-            "tool_choice": "auto",
-            "temperature": 0.1,  # Low temperature for deterministic tool calls
-            "max_tokens": 512,
-            "stop": ["\nUser:", "\nAssistant:"]
-        }
-        
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        
+        """Invoke the Llama 3.1 8B API via Google Cloud Vertex AI."""
         try:
-            response = requests.post(self.api_url, headers=headers, json=payload, timeout=30)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            return {"error": f"API call failed: {str(e)}"}
+            # Use OpenAI client to call Vertex AI
+            response = self.client.chat.completions.create(
+                model=self.model_id,
+                messages=messages,
+                tools=tools,
+                tool_choice="auto",
+                temperature=0.1,  # Low temperature for deterministic tool calls
+                max_tokens=512
+            )
+            
+            # Convert OpenAI response format to our expected format
+            return {
+                "choices": [{
+                    "message": {
+                        "content": response.choices[0].message.content,
+                        "tool_calls": response.choices[0].message.tool_calls
+                    }
+                }]
+            }
+        except Exception as e:
+            return {"error": f"Vertex AI API call failed: {str(e)}"}
     
     def parse_llm_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
         """Parse the LLM response to determine if it's a tool call or text response."""

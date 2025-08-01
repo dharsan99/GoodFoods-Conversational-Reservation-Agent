@@ -1,17 +1,18 @@
 # GoodFoods Conversational Agent Environment Variables
 # Copy this file to .env and fill in your actual values
 
-# Your Llama 3.1 8B API key
-# You can get this from providers like:
-# - DeepInfra: https://deepinfra.com/
-# - Ollama: https://ollama.ai/ (for local deployment)
-# - Other compatible providers
-API_KEY="your_api_key_here"
+# Google Cloud Configuration (for Llama 3.1 8B via Vertex AI)
+# Your Google Cloud Project ID (required)
+GOOGLE_CLOUD_PROJECT_ID="your_project_id_here"
+
+# Google Cloud Location (optional, defaults to us-central1)
+# Available locations: us-central1, us-east1, europe-west1, asia-southeast1
+GOOGLE_CLOUD_LOCATION="us-central1"
 
 # PostgreSQL Database URL (for production)
 # Format: postgresql://username:password@host:port/database
 # For Render: Use the Internal Connection URL from your PostgreSQL service
 DATABASE_URL="postgresql://username:password@host:port/database"
 
-# Optional: Custom API endpoint (defaults to DeepInfra)
-# API_URL="https://api.deepinfra.com/v1/chat/completions" 
+# Legacy API Key (if using other providers like DeepInfra)
+# API_KEY="your_api_key_here" 

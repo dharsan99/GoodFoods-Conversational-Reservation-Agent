@@ -6,7 +6,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - API_KEY=${API_KEY}
+      - GOOGLE_CLOUD_PROJECT_ID=${GOOGLE_CLOUD_PROJECT_ID}
+      - GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION:-us-central1}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
       - BACKEND_URL=http://localhost:8000
       - DATABASE_URL=${DATABASE_URL}
     restart: unless-stopped

@@ -6,9 +6,29 @@ This guide provides detailed steps for deploying the GoodFoods Conversational Re
 
 - GitHub repository with the GoodFoods code
 - Render account (free tier available)
-- Llama 3.1 8B API key (from DeepInfra, Ollama, etc.)
+- Google Cloud account with Vertex AI enabled
+- Google Cloud Project ID
 
-## Step 1: Prepare Your Repository
+## Step 1: Set Up Google Cloud
+
+1. **Create Google Cloud Project**
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select existing one
+   - Note your **Project ID** (you'll need this)
+
+2. **Enable Vertex AI API**
+   - In Google Cloud Console, go to **APIs & Services > Library**
+   - Search for "Vertex AI API"
+   - Click **Enable**
+
+3. **Set Up Authentication**
+   - Go to **IAM & Admin > Service Accounts**
+   - Create a new service account or use existing one
+   - Add the **Vertex AI User** role
+   - Create and download a JSON key file
+   - **Important**: Keep this key file secure
+
+## Step 2: Prepare Your Repository
 
 Ensure your repository contains the following structure:
 ```
@@ -36,7 +56,7 @@ GoodFoods-Conversational-Reservation-Agent/
 └── README.md
 ```
 
-## Step 2: Create PostgreSQL Database
+## Step 3: Create PostgreSQL Database
 
 1. **Go to Render Dashboard**
    - Visit [dashboard.render.com](https://dashboard.render.com/)
@@ -60,7 +80,7 @@ GoodFoods-Conversational-Reservation-Agent/
    - Copy the **Internal Connection URL**
    - It will look like: `postgresql://user:password@host:port/database`
 
-## Step 3: Deploy Backend Service
+## Step 4: Deploy Backend Service
 
 1. **Create Web Service**
    - Go to **New > Web Service**
@@ -75,7 +95,8 @@ GoodFoods-Conversational-Reservation-Agent/
 
 3. **Add Environment Variables**
    ```
-   API_KEY=your_llama_api_key_here
+   GOOGLE_CLOUD_PROJECT_ID=your_project_id_here
+   GOOGLE_CLOUD_LOCATION=us-central1
    DATABASE_URL=your_postgres_internal_url_from_step_2
    ```
 
@@ -92,7 +113,7 @@ GoodFoods-Conversational-Reservation-Agent/
    - Click **Create Web Service**
    - Render will build and deploy your backend
 
-## Step 4: Deploy Frontend Service
+## Step 5: Deploy Frontend Service
 
 1. **Create Another Web Service**
    - Go to **New > Web Service**
@@ -118,7 +139,7 @@ GoodFoods-Conversational-Reservation-Agent/
    - Click **Create Web Service**
    - Render will build and deploy your frontend
 
-## Step 5: Update CORS Settings
+## Step 6: Update CORS Settings
 
 After both services are deployed:
 
@@ -137,7 +158,7 @@ After both services are deployed:
    - Go to **Manual Deploy > Deploy latest commit**
    - This will apply the CORS changes
 
-## Step 6: Verify Deployment
+## Step 7: Verify Deployment
 
 1. **Check Backend Health**
    - Visit: `https://your-backend-service.onrender.com/health`
@@ -195,7 +216,8 @@ curl https://your-backend-service.onrender.com/health
 ## Environment Variables Reference
 
 ### Backend Variables
-- `API_KEY`: Your Llama 3.1 8B API key (required)
+- `GOOGLE_CLOUD_PROJECT_ID`: Your Google Cloud Project ID (required)
+- `GOOGLE_CLOUD_LOCATION`: Google Cloud region (defaults to us-central1)
 - `DATABASE_URL`: PostgreSQL connection string (required)
 - `FRONTEND_URL`: Frontend service URL (for CORS)
 

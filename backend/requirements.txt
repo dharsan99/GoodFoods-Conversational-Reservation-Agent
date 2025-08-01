@@ -5,4 +5,7 @@ requests==2.31.0
 faker==20.1.0
 pydantic==2.5.0
 prisma==0.12.0
-psycopg2-binary==2.9.9 
+psycopg2-binary==2.9.9
+google-auth==2.23.4
+google-auth-transport==0.2.0
+openai==1.3.0 
